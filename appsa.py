@@ -1,12 +1,11 @@
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import requests
 from io import BytesIO
-import cv2
 from ultralytics import YOLO
 import numpy as np
 
-st.title("Object Detection from Image URL using YOLO")
+st.title("Object Detection from Image URL using YOLO (No cv2)")
 
 url = st.text_input("Enter image URL:")
 
@@ -18,23 +17,39 @@ if url:
         
         st.image(img_pil, caption="Original Image", use_column_width=True)
         
-        # แปลง PIL Image เป็น numpy array (BGR) สำหรับ OpenCV
-        img = np.array(img_pil)
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        
+        # แปลง PIL Image เป็น numpy array (RGB)
+        img_np = np.array(img_pil)
+
         # โหลดโมเดล YOLOv8 รุ่นเล็ก (yolov8n.pt)
         model = YOLO('yolov8n.pt')
         
         # ตรวจจับวัตถุ
-        results = model(img)
+        results = model(img_np)
         
-        # วาดกรอบและ label ลงบนภาพ (ผลลัพธ์เป็น numpy array)
-        result_img = results[0].plot()
+        # ใช้ PIL วาดกรอบและ label ลงบนภาพ
+        img_draw = img_pil.copy()
+        draw = ImageDraw.Draw(img_draw)
         
-        # แปลงกลับเป็น RGB สำหรับแสดงใน Streamlit
-        result_img = cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB)
+        # โหลดฟอนต์ (อันนี้ใช้ default)
+        try:
+            font = ImageFont.truetype("arial.ttf", 20)
+        except:
+            font = ImageFont.load_default()
         
-        st.image(result_img, caption="Detected Objects", use_column_width=True)
+        for box in results[0].boxes.data.tolist():
+            x1, y1, x2, y2, score, class_id = box
+            label = model.names[int(class_id)]
+            conf_text = f"{label} {score:.2f}"
+            
+            # วาดกรอบ
+            draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
+            
+            # วาดข้อความ label
+            text_size = draw.textsize(conf_text, font=font)
+            draw.rectangle([x1, y1 - text_size[1], x1 + text_size[0], y1], fill="red")
+            draw.text((x1, y1 - text_size[1]), conf_text, fill="white", font=font)
+        
+        st.image(img_draw, caption="Detected Objects", use_column_width=True)
         
         # แสดงข้อมูลวัตถุที่ตรวจจับได้
         st.write("Detected Objects:")
