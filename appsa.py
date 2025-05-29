@@ -21,7 +21,7 @@ if url:
         img_np = np.array(img_pil)
 
         # โหลดโมเดล YOLOv8 รุ่นเล็ก (yolov8n.pt)
-        model = YOLO('yolov5s.pt')
+        model = YOLO('yolov8n.pt')
         
         # ตรวจจับวัตถุ
         results = model(img_np)
